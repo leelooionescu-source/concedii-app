@@ -14,18 +14,28 @@
         body { background-color: #f8f9fa; }
         .navbar { background: linear-gradient(135deg, #2563eb, #7c3aed); }
         .card-header-primary { background: linear-gradient(135deg, #2563eb, #7c3aed); color: white; }
+        .table-responsive { -webkit-overflow-scrolling: touch; }
+        @media (max-width: 576px) {
+            .navbar-brand { font-size: 1rem; }
+            h3 { font-size: 1.3rem; }
+        }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-dark mb-4">
+    <nav class="navbar navbar-expand-md navbar-dark mb-4">
         <div class="container">
             <a class="navbar-brand fw-bold" href="/">Evidenta Concedii</a>
-            <div class="d-flex gap-2">
-                <a href="/" class="btn btn-outline-light btn-sm">Dashboard</a>
-                <a href="/angajati" class="btn btn-outline-light btn-sm">Angajati</a>
-                <a href="/concedii" class="btn btn-outline-light btn-sm">Concedii</a>
-                <a href="/calendar" class="btn btn-outline-light btn-sm">Calendar</a>
-                <a href="/sarbatori" class="btn btn-outline-light btn-sm">Sarbatori</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMenu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navMenu">
+                <div class="navbar-nav ms-auto gap-1 mt-2 mt-md-0">
+                    <a href="/" class="nav-link text-white">Dashboard</a>
+                    <a href="/angajati" class="nav-link text-white">Angajati</a>
+                    <a href="/concedii" class="nav-link text-white">Concedii</a>
+                    <a href="/calendar" class="nav-link text-white">Calendar</a>
+                    <a href="/sarbatori" class="nav-link text-white">Sarbatori</a>
+                </div>
             </div>
         </div>
     </nav>
