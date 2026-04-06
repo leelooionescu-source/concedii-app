@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
-<h3 class="mb-4">Dashboard - {{ an }}</h3>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>Dashboard - {{ an }}</h3>
+    <button onclick="enableNotifications()" class="btn btn-outline-primary btn-sm">Activeaza notificari</button>
+</div>
 
 <!-- Cine e in concediu azi -->
 <div class="card shadow-sm mb-4">

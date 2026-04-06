@@ -296,6 +296,57 @@ def export_excel():
     return send_file(filepath, as_attachment=True, download_name=f'Raport Concedii {an}.xlsx')
 
 
+# ============ API NOTIFICARI ============
+
+@app.route('/api/notifications')
+def api_notifications():
+    """Returneaza notificari: cine incepe/termina concediu maine, sold scazut."""
+    from flask import jsonify
+    azi = date.today()
+    maine = azi + timedelta(days=1)
+    notificari = []
+
+    # Concedii care incep maine
+    start_maine = Concediu.query.join(Angajat).filter(
+        Concediu.data_start == maine, Angajat.activ == True
+    ).all()
+    for c in start_maine:
+        notificari.append({
+            'title': 'Concediu incepe maine',
+            'body': f'{c.angajat.nume_complet} - {TIPURI_CONCEDIU.get(c.tip, c.tip)} ({c.zile_lucratoare} zile)',
+            'type': 'start',
+        })
+
+    # Concedii care se termina azi (revin maine)
+    sfarsit_azi = Concediu.query.join(Angajat).filter(
+        Concediu.data_sfarsit == azi, Angajat.activ == True
+    ).all()
+    for c in sfarsit_azi:
+        notificari.append({
+            'title': 'Revine din concediu',
+            'body': f'{c.angajat.nume_complet} revine maine la lucru',
+            'type': 'return',
+        })
+
+    # Sold CO scazut (sub 5 zile)
+    an = azi.year
+    angajati = Angajat.query.filter_by(activ=True).all()
+    for a in angajati:
+        co_consumat = sum(
+            c.zile_lucratoare for c in Concediu.query.filter_by(angajat_id=a.id, tip='CO').filter(
+                db.extract('year', Concediu.data_start) == an).all()
+        )
+        ramas = a.zile_co_an - co_consumat
+        if 0 < ramas <= 3:
+            notificari.append({
+                'title': 'Sold CO scazut',
+                'body': f'{a.nume_complet} mai are doar {ramas} zile CO ramase',
+                'type': 'warning',
+            })
+
+    return jsonify(notificari)
+
+
 # ============ RUN ============
 
 if __name__ == '__main__':
