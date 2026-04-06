@@ -19,7 +19,7 @@ class Angajat(db.Model):
 
     @property
     def nume_complet(self):
-        return f"{self.nume} {self.prenume}"
+        return f"{self.prenume} {self.nume}"
 
     def __repr__(self):
         return f'<Angajat {self.nume} {self.prenume}>'

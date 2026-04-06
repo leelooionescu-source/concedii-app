@@ -11,8 +11,8 @@
             <thead class="table-light">
                 <tr>
                     <th>#</th>
-                    <th>Nume</th>
                     <th>Prenume</th>
+                    <th>Nume</th>
                     <th>Departament</th>
                     <th>Data angajare</th>
                     <th class="text-center">Zile CO/an</th>
@@ -24,8 +24,8 @@
                 {% for a in angajati %}
                 <tr class="{{ 'table-secondary' if not a.activ }}">
                     <td>{{ loop.index }}</td>
-                    <td class="fw-bold">{{ a.nume }}</td>
-                    <td>{{ a.prenume }}</td>
+                    <td class="fw-bold">{{ a.prenume }}</td>
+                    <td>{{ a.nume }}</td>
                     <td>{{ a.departament }}</td>
                     <td>{{ a.data_angajare.strftime('%d.%m.%Y') if a.data_angajare else '-' }}</td>
                     <td class="text-center">{{ a.zile_co_an }}</td>
