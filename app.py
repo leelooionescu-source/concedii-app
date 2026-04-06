@@ -1,30 +1,18 @@
 import os
 from datetime import date, datetime, timedelta
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file
-from models import db, Angajat, Concediu, SarbatoareLegala
-from utils import zile_lucratoare, sold_co, sarbatori_legale, get_sarbatori_set
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify
+from utils import zile_lucratoare, sarbatori_legale, get_sarbatori_set
+from storage import (
+    get_angajati, add_angajat, update_angajat, delete_angajat, get_angajat_by_id,
+    get_concedii, add_concediu, delete_concediu, get_concedii_by_angajat, init_storage,
+)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'concedii-app-secret-2026')
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, 'data', 'concedii.db')
-os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-db.init_app(app)
-
+# Initialize Supabase storage
 with app.app_context():
-    db.create_all()
-    # Populare sarbatori legale pt anul curent si urmator
-    an_curent = date.today().year
-    for an in [an_curent, an_curent + 1]:
-        existing = SarbatoareLegala.query.filter_by(an=an).count()
-        if existing == 0:
-            for d, denumire in sarbatori_legale(an):
-                db.session.add(SarbatoareLegala(data=d, denumire=denumire, an=an))
-            db.session.commit()
+    init_storage()
 
 TIPURI_CONCEDIU = {
     'CO': 'Concediu de odihna',
@@ -40,23 +28,31 @@ TIPURI_CONCEDIU = {
 def dashboard():
     azi = date.today()
     an = azi.year
-    angajati = Angajat.query.filter_by(activ=True).order_by(Angajat.nume).all()
+    angajati = [a for a in get_angajati() if a.get('activ', True)]
+    angajati.sort(key=lambda a: a.get('nume', ''))
+    concedii = get_concedii()
 
     # Cine e in concediu azi
-    in_concediu = Concediu.query.filter(
-        Concediu.data_start <= azi, Concediu.data_sfarsit >= azi
-    ).all()
+    azi_str = azi.isoformat()
+    in_concediu = []
+    for c in concedii:
+        if c['data_start'] <= azi_str <= c['data_sfarsit']:
+            ang = get_angajat_by_id(c['angajat_id'])
+            if ang:
+                in_concediu.append({**c, '_angajat': ang})
 
     # Sold per angajat
     solduri = []
     for a in angajati:
-        concedii = Concediu.query.filter_by(angajat_id=a.id).all()
-        co_consumat = sum(c.zile_lucratoare for c in concedii if c.tip == 'CO' and c.data_start.year == an)
+        co_consumat = sum(
+            c['zile_lucratoare'] for c in concedii
+            if c['angajat_id'] == a['id'] and c['tip'] == 'CO' and c['data_start'][:4] == str(an)
+        )
         solduri.append({
             'angajat': a,
-            'total': a.zile_co_an,
+            'total': a.get('zile_co_an', 21),
             'consumat': co_consumat,
-            'ramas': a.zile_co_an - co_consumat,
+            'ramas': a.get('zile_co_an', 21) - co_consumat,
         })
 
     return render_template('dashboard.html',
@@ -68,7 +64,8 @@ def dashboard():
 
 @app.route('/angajati')
 def lista_angajati():
-    angajati = Angajat.query.order_by(Angajat.activ.desc(), Angajat.nume).all()
+    angajati = get_angajati()
+    angajati.sort(key=lambda a: (not a.get('activ', True), a.get('nume', '')))
     return render_template('angajati.html', angajati=angajati)
 
 
@@ -84,42 +81,38 @@ def adauga_angajat():
         flash('Numele si prenumele sunt obligatorii!', 'error')
         return redirect(url_for('lista_angajati'))
 
-    a = Angajat(
-        nume=nume, prenume=prenume, departament=departament,
-        zile_co_an=int(zile_co) if zile_co else 21,
-        data_angajare=datetime.strptime(data_ang, '%Y-%m-%d').date() if data_ang else None,
-    )
-    db.session.add(a)
-    db.session.commit()
-    flash(f'Angajat {a.nume_complet} adaugat.', 'success')
+    add_angajat({
+        'nume': nume, 'prenume': prenume, 'departament': departament,
+        'zile_co_an': int(zile_co) if zile_co else 21,
+        'data_angajare': data_ang if data_ang else '',
+    })
+    flash(f'Angajat {prenume} {nume} adaugat.', 'success')
     return redirect(url_for('lista_angajati'))
 
 
 @app.route('/angajati/editeaza/<int:id>', methods=['POST'])
 def editeaza_angajat(id):
-    a = Angajat.query.get_or_404(id)
-    a.nume = request.form.get('nume', a.nume).strip()
-    a.prenume = request.form.get('prenume', a.prenume).strip()
-    a.departament = request.form.get('departament', a.departament).strip()
+    updates = {
+        'nume': request.form.get('nume', '').strip(),
+        'prenume': request.form.get('prenume', '').strip(),
+        'departament': request.form.get('departament', '').strip(),
+        'activ': request.form.get('activ') == 'on',
+    }
     zile_co = request.form.get('zile_co_an', '')
     if zile_co:
-        a.zile_co_an = int(zile_co)
+        updates['zile_co_an'] = int(zile_co)
     data_ang = request.form.get('data_angajare', '')
     if data_ang:
-        a.data_angajare = datetime.strptime(data_ang, '%Y-%m-%d').date()
-    activ = request.form.get('activ')
-    a.activ = activ == 'on'
-    db.session.commit()
-    flash(f'Angajat {a.nume_complet} actualizat.', 'success')
+        updates['data_angajare'] = data_ang
+    update_angajat(id, updates)
+    flash('Angajat actualizat.', 'success')
     return redirect(url_for('lista_angajati'))
 
 
 @app.route('/angajati/sterge/<int:id>', methods=['POST'])
 def sterge_angajat(id):
-    a = Angajat.query.get_or_404(id)
-    db.session.delete(a)
-    db.session.commit()
-    flash(f'Angajat {a.nume_complet} sters.', 'success')
+    delete_angajat(id)
+    flash('Angajat sters.', 'success')
     return redirect(url_for('lista_angajati'))
 
 
@@ -130,14 +123,19 @@ def lista_concedii():
     an = request.args.get('an', date.today().year, type=int)
     angajat_id = request.args.get('angajat_id', 0, type=int)
 
-    q = Concediu.query.join(Angajat)
+    concedii = get_concedii()
+    # Filter by year
+    concedii = [c for c in concedii if c['data_start'][:4] == str(an)]
     if angajat_id:
-        q = q.filter(Concediu.angajat_id == angajat_id)
-    concedii = q.filter(
-        db.extract('year', Concediu.data_start) == an
-    ).order_by(Concediu.data_start.desc()).all()
+        concedii = [c for c in concedii if c['angajat_id'] == angajat_id]
+    concedii.sort(key=lambda c: c['data_start'], reverse=True)
 
-    angajati = Angajat.query.filter_by(activ=True).order_by(Angajat.nume).all()
+    # Attach angajat info
+    for c in concedii:
+        c['_angajat'] = get_angajat_by_id(c['angajat_id'])
+
+    angajati = [a for a in get_angajati() if a.get('activ', True)]
+    angajati.sort(key=lambda a: a.get('nume', ''))
     return render_template('concedii.html',
         concedii=concedii, angajati=angajati, an=an,
         angajat_id=angajat_id, tipuri=TIPURI_CONCEDIU)
@@ -164,21 +162,17 @@ def adauga_concediu():
 
     zile = zile_lucratoare(ds, de)
 
-    c = Concediu(
-        angajat_id=angajat_id, data_start=ds, data_sfarsit=de,
-        tip=tip, zile_lucratoare=zile, observatii=observatii,
-    )
-    db.session.add(c)
-    db.session.commit()
+    add_concediu({
+        'angajat_id': angajat_id, 'data_start': data_start, 'data_sfarsit': data_sfarsit,
+        'tip': tip, 'zile_lucratoare': zile, 'observatii': observatii,
+    })
     flash(f'Concediu adaugat: {zile} zile lucratoare.', 'success')
     return redirect(url_for('lista_concedii'))
 
 
 @app.route('/concedii/sterge/<int:id>', methods=['POST'])
 def sterge_concediu(id):
-    c = Concediu.query.get_or_404(id)
-    db.session.delete(c)
-    db.session.commit()
+    delete_concediu(id)
     flash('Concediu sters.', 'success')
     return redirect(url_for('lista_concedii'))
 
@@ -190,36 +184,33 @@ def calendar_view():
     an = request.args.get('an', date.today().year, type=int)
     luna = request.args.get('luna', date.today().month, type=int)
 
-    # Sarbatori legale
     sarbatori = get_sarbatori_set(an)
     sarbatori_dict = {s[0]: s[1] for s in sarbatori_legale(an)}
 
-    # Concedii in luna
     prima_zi = date(an, luna, 1)
     if luna == 12:
         ultima_zi = date(an, 12, 31)
     else:
         ultima_zi = date(an, luna + 1, 1) - timedelta(days=1)
 
-    concedii = Concediu.query.join(Angajat).filter(
-        Concediu.data_start <= ultima_zi,
-        Concediu.data_sfarsit >= prima_zi,
-        Angajat.activ == True,
-    ).all()
+    concedii = get_concedii()
+    # Filter concedii that overlap this month
+    prima_str = prima_zi.isoformat()
+    ultima_str = ultima_zi.isoformat()
+    concedii_luna = [c for c in concedii if c['data_start'] <= ultima_str and c['data_sfarsit'] >= prima_str]
+    for c in concedii_luna:
+        c['_angajat'] = get_angajat_by_id(c['angajat_id'])
 
-    # Build calendar data
     zile = []
     d = prima_zi
     while d <= ultima_zi:
+        d_str = d.isoformat()
         zi_info = {
             'data': d,
             'weekend': d.weekday() >= 5,
             'sarbatoare': sarbatori_dict.get(d, ''),
-            'concedii': [],
+            'concedii': [c for c in concedii_luna if c['data_start'] <= d_str <= c['data_sfarsit']],
         }
-        for c in concedii:
-            if c.data_start <= d <= c.data_sfarsit:
-                zi_info['concedii'].append(c)
         zile.append(zi_info)
         d += timedelta(days=1)
 
@@ -236,8 +227,9 @@ def calendar_view():
 @app.route('/sarbatori')
 def lista_sarbatori():
     an = request.args.get('an', date.today().year, type=int)
-    sarbatori = SarbatoareLegala.query.filter_by(an=an).order_by(SarbatoareLegala.data).all()
-    return render_template('sarbatori.html', sarbatori=sarbatori, an=an)
+    sarb = sarbatori_legale(an)
+    sarbatori_list = [{'data': s[0], 'denumire': s[1]} for s in sarb]
+    return render_template('sarbatori.html', sarbatori=sarbatori_list, an=an)
 
 
 # ============ RAPOARTE ============
@@ -249,14 +241,15 @@ def export_excel():
     import tempfile
 
     an = request.args.get('an', date.today().year, type=int)
-    angajati = Angajat.query.filter_by(activ=True).order_by(Angajat.nume).all()
+    angajati = [a for a in get_angajati() if a.get('activ', True)]
+    angajati.sort(key=lambda a: a.get('nume', ''))
+    concedii = get_concedii()
 
     wb = Workbook()
     ws = wb.active
     ws.title = f'Concedii {an}'
 
-    # Header
-    headers = ['Nr.', 'Nume', 'Prenume', 'Departament', 'Zile CO/an',
+    headers = ['Nr.', 'Prenume', 'Nume', 'Departament', 'Zile CO/an',
                'CO consumat', 'CO ramas', 'Medical', 'Fara plata', 'Eveniment', 'Total zile']
     header_font = Font(bold=True, color='FFFFFF')
     header_fill = PatternFill(start_color='2563EB', end_color='2563EB', fill_type='solid')
@@ -272,21 +265,20 @@ def export_excel():
         cell.border = thin_border
 
     for i, a in enumerate(angajati, 1):
-        concedii = Concediu.query.filter_by(angajat_id=a.id).filter(
-            db.extract('year', Concediu.data_start) == an).all()
-        co = sum(c.zile_lucratoare for c in concedii if c.tip == 'CO')
-        med = sum(c.zile_lucratoare for c in concedii if c.tip == 'MEDICAL')
-        fp = sum(c.zile_lucratoare for c in concedii if c.tip == 'FARA_PLATA')
-        ev = sum(c.zile_lucratoare for c in concedii if c.tip == 'EVENIMENT')
-        vals = [i, a.nume, a.prenume, a.departament, a.zile_co_an,
-                co, a.zile_co_an - co, med, fp, ev, co + med + fp + ev]
+        ang_concedii = [c for c in concedii if c['angajat_id'] == a['id'] and c['data_start'][:4] == str(an)]
+        co = sum(c['zile_lucratoare'] for c in ang_concedii if c['tip'] == 'CO')
+        med = sum(c['zile_lucratoare'] for c in ang_concedii if c['tip'] == 'MEDICAL')
+        fp = sum(c['zile_lucratoare'] for c in ang_concedii if c['tip'] == 'FARA_PLATA')
+        ev = sum(c['zile_lucratoare'] for c in ang_concedii if c['tip'] == 'EVENIMENT')
+        zile_co_an = a.get('zile_co_an', 21)
+        vals = [i, a.get('prenume', ''), a.get('nume', ''), a.get('departament', ''),
+                zile_co_an, co, zile_co_an - co, med, fp, ev, co + med + fp + ev]
         for j, v in enumerate(vals, 1):
             cell = ws.cell(row=i + 1, column=j, value=v)
             cell.border = thin_border
             if j >= 5:
                 cell.alignment = Alignment(horizontal='center')
 
-    # Auto width
     for col in ws.columns:
         max_len = max(len(str(cell.value or '')) for cell in col)
         ws.column_dimensions[col[0].column_letter].width = max_len + 4
@@ -300,48 +292,41 @@ def export_excel():
 
 @app.route('/api/notifications')
 def api_notifications():
-    """Returneaza notificari: cine incepe/termina concediu maine, sold scazut."""
-    from flask import jsonify
     azi = date.today()
     maine = azi + timedelta(days=1)
+    azi_str = azi.isoformat()
+    maine_str = maine.isoformat()
     notificari = []
+    concedii = get_concedii()
+    angajati = get_angajati()
 
-    # Concedii care incep maine
-    start_maine = Concediu.query.join(Angajat).filter(
-        Concediu.data_start == maine, Angajat.activ == True
-    ).all()
-    for c in start_maine:
-        notificari.append({
-            'title': 'Concediu incepe maine',
-            'body': f'{c.angajat.nume_complet} - {TIPURI_CONCEDIU.get(c.tip, c.tip)} ({c.zile_lucratoare} zile)',
-            'type': 'start',
-        })
+    for c in concedii:
+        ang = next((a for a in angajati if a['id'] == c['angajat_id'] and a.get('activ', True)), None)
+        if not ang:
+            continue
+        nume = f"{ang.get('prenume', '')} {ang.get('nume', '')}"
+        if c['data_start'] == maine_str:
+            notificari.append({
+                'title': 'Concediu incepe maine',
+                'body': f'{nume} - {TIPURI_CONCEDIU.get(c["tip"], c["tip"])} ({c["zile_lucratoare"]} zile)',
+            })
+        if c['data_sfarsit'] == azi_str:
+            notificari.append({
+                'title': 'Revine din concediu',
+                'body': f'{nume} revine maine la lucru',
+            })
 
-    # Concedii care se termina azi (revin maine)
-    sfarsit_azi = Concediu.query.join(Angajat).filter(
-        Concediu.data_sfarsit == azi, Angajat.activ == True
-    ).all()
-    for c in sfarsit_azi:
-        notificari.append({
-            'title': 'Revine din concediu',
-            'body': f'{c.angajat.nume_complet} revine maine la lucru',
-            'type': 'return',
-        })
-
-    # Sold CO scazut (sub 5 zile)
     an = azi.year
-    angajati = Angajat.query.filter_by(activ=True).all()
     for a in angajati:
-        co_consumat = sum(
-            c.zile_lucratoare for c in Concediu.query.filter_by(angajat_id=a.id, tip='CO').filter(
-                db.extract('year', Concediu.data_start) == an).all()
-        )
-        ramas = a.zile_co_an - co_consumat
+        if not a.get('activ', True):
+            continue
+        co = sum(c['zile_lucratoare'] for c in concedii
+                 if c['angajat_id'] == a['id'] and c['tip'] == 'CO' and c['data_start'][:4] == str(an))
+        ramas = a.get('zile_co_an', 21) - co
         if 0 < ramas <= 3:
             notificari.append({
                 'title': 'Sold CO scazut',
-                'body': f'{a.nume_complet} mai are doar {ramas} zile CO ramase',
-                'type': 'warning',
+                'body': f'{a.get("prenume", "")} {a.get("nume", "")} mai are doar {ramas} zile CO',
             })
 
     return jsonify(notificari)

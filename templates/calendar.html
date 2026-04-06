@@ -36,7 +36,7 @@
                         {% endif %}
                         {% for c in z.concedii %}
                         <span class="badge bg-{{ 'primary' if c.tip == 'CO' else 'warning text-dark' if c.tip == 'MEDICAL' else 'info' if c.tip == 'EVENIMENT' else 'secondary' }}">
-                            {{ c.angajat.nume_complet }} - {{ tipuri.get(c.tip, c.tip) }}
+                            {% if c._angajat %}{{ c._angajat.prenume }} {{ c._angajat.nume }}{% endif %} - {{ tipuri.get(c.tip, c.tip) }}
                         </span>
                         {% endfor %}
                     </td>

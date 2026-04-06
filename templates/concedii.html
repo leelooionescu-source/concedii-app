@@ -9,14 +9,13 @@
     </div>
 </div>
 
-<!-- Filtre -->
 <div class="mb-3">
     <form method="get" class="d-flex gap-2 align-items-center">
         <input type="hidden" name="an" value="{{ an }}">
         <select name="angajat_id" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
             <option value="0">Toti angajatii</option>
             {% for a in angajati %}
-            <option value="{{ a.id }}" {{ 'selected' if a.id == angajat_id }}>{{ a.nume_complet }}</option>
+            <option value="{{ a.id }}" {{ 'selected' if a.id == angajat_id }}>{{ a.prenume }} {{ a.nume }}</option>
             {% endfor %}
         </select>
     </form>
@@ -41,14 +40,14 @@
                 {% for c in concedii %}
                 <tr>
                     <td>{{ loop.index }}</td>
-                    <td class="fw-bold">{{ c.angajat.nume_complet }}</td>
+                    <td class="fw-bold">{% if c._angajat %}{{ c._angajat.prenume }} {{ c._angajat.nume }}{% endif %}</td>
                     <td>
                         <span class="badge bg-{{ 'primary' if c.tip == 'CO' else 'warning text-dark' if c.tip == 'MEDICAL' else 'info' if c.tip == 'EVENIMENT' else 'secondary' }}">
                             {{ tipuri.get(c.tip, c.tip) }}
                         </span>
                     </td>
-                    <td>{{ c.data_start.strftime('%d.%m.%Y') }}</td>
-                    <td>{{ c.data_sfarsit.strftime('%d.%m.%Y') }}</td>
+                    <td>{{ c.data_start }}</td>
+                    <td>{{ c.data_sfarsit }}</td>
                     <td class="text-center fw-bold">{{ c.zile_lucratoare }}</td>
                     <td><small>{{ c.observatii }}</small></td>
                     <td>
@@ -66,7 +65,6 @@
     </div>
 </div>
 
-<!-- Add Modal -->
 <div class="modal fade" id="addConcediu" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -78,7 +76,7 @@
                         <select name="angajat_id" class="form-select" required>
                             <option value="">Selecteaza...</option>
                             {% for a in angajati %}
-                            <option value="{{ a.id }}">{{ a.nume_complet }}</option>
+                            <option value="{{ a.id }}">{{ a.prenume }} {{ a.nume }}</option>
                             {% endfor %}
                         </select>
                     </div>

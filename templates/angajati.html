@@ -27,7 +27,7 @@
                     <td class="fw-bold">{{ a.prenume }}</td>
                     <td>{{ a.nume }}</td>
                     <td>{{ a.departament }}</td>
-                    <td>{{ a.data_angajare.strftime('%d.%m.%Y') if a.data_angajare else '-' }}</td>
+                    <td>{{ a.data_angajare if a.data_angajare else '-' }}</td>
                     <td class="text-center">{{ a.zile_co_an }}</td>
                     <td><span class="badge bg-{{ 'success' if a.activ else 'secondary' }}">{{ 'Activ' if a.activ else 'Inactiv' }}</span></td>
                     <td>
@@ -37,18 +37,17 @@
                         </form>
                     </td>
                 </tr>
-                <!-- Edit Modal -->
                 <div class="modal fade" id="editModal{{ a.id }}" tabindex="-1">
                     <div class="modal-dialog">
                         <div class="modal-content">
                             <form action="/angajati/editeaza/{{ a.id }}" method="post">
-                                <div class="modal-header"><h5 class="modal-title">Editeaza {{ a.nume_complet }}</h5></div>
+                                <div class="modal-header"><h5 class="modal-title">Editeaza {{ a.prenume }} {{ a.nume }}</h5></div>
                                 <div class="modal-body">
                                     <div class="mb-2"><label class="form-label">Nume</label><input name="nume" class="form-control" value="{{ a.nume }}" required></div>
                                     <div class="mb-2"><label class="form-label">Prenume</label><input name="prenume" class="form-control" value="{{ a.prenume }}" required></div>
                                     <div class="mb-2"><label class="form-label">Departament</label><input name="departament" class="form-control" value="{{ a.departament }}"></div>
                                     <div class="mb-2"><label class="form-label">Zile CO/an</label><input name="zile_co_an" type="number" class="form-control" value="{{ a.zile_co_an }}"></div>
-                                    <div class="mb-2"><label class="form-label">Data angajare</label><input name="data_angajare" type="date" class="form-control" value="{{ a.data_angajare.strftime('%Y-%m-%d') if a.data_angajare else '' }}"></div>
+                                    <div class="mb-2"><label class="form-label">Data angajare</label><input name="data_angajare" type="date" class="form-control" value="{{ a.data_angajare }}"></div>
                                     <div class="form-check"><input name="activ" type="checkbox" class="form-check-input" {{ 'checked' if a.activ }}><label class="form-check-label">Activ</label></div>
                                 </div>
                                 <div class="modal-footer">
@@ -65,15 +64,14 @@
     </div>
 </div>
 
-<!-- Add Modal -->
 <div class="modal fade" id="addModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <form action="/angajati/adauga" method="post">
                 <div class="modal-header card-header-primary"><h5 class="modal-title text-white">Angajat nou</h5></div>
                 <div class="modal-body">
-                    <div class="mb-2"><label class="form-label">Nume *</label><input name="nume" class="form-control" required></div>
                     <div class="mb-2"><label class="form-label">Prenume *</label><input name="prenume" class="form-control" required></div>
+                    <div class="mb-2"><label class="form-label">Nume *</label><input name="nume" class="form-control" required></div>
                     <div class="mb-2"><label class="form-label">Departament</label><input name="departament" class="form-control"></div>
                     <div class="mb-2"><label class="form-label">Zile CO/an</label><input name="zile_co_an" type="number" class="form-control" value="21"></div>
                     <div class="mb-2"><label class="form-label">Data angajare</label><input name="data_angajare" type="date" class="form-control"></div>

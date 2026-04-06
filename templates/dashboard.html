@@ -5,7 +5,6 @@
     <button onclick="enableNotifications()" class="btn btn-outline-primary btn-sm">Activeaza notificari</button>
 </div>
 
-<!-- Cine e in concediu azi -->
 <div class="card shadow-sm mb-4">
     <div class="card-header card-header-primary">
         <h5 class="mb-0">In concediu azi ({{ azi.strftime('%d.%m.%Y') }})</h5>
@@ -15,8 +14,8 @@
         <div class="d-flex flex-wrap gap-2">
             {% for c in in_concediu %}
             <span class="badge bg-{{ 'primary' if c.tip == 'CO' else 'warning text-dark' if c.tip == 'MEDICAL' else 'secondary' }} fs-6 p-2">
-                {{ c.angajat.nume_complet }} - {{ tipuri.get(c.tip, c.tip) }}
-                <small>(pana {{ c.data_sfarsit.strftime('%d.%m') }})</small>
+                {{ c._angajat.prenume }} {{ c._angajat.nume }} - {{ tipuri.get(c.tip, c.tip) }}
+                <small>(pana {{ c.data_sfarsit }})</small>
             </span>
             {% endfor %}
         </div>
@@ -26,7 +25,6 @@
     </div>
 </div>
 
-<!-- Sold zile CO -->
 <div class="card shadow-sm">
     <div class="card-header bg-light">
         <div class="d-flex justify-content-between align-items-center">
@@ -49,7 +47,7 @@
             <tbody>
                 {% for s in solduri %}
                 <tr>
-                    <td class="fw-bold">{{ s.angajat.nume_complet }}</td>
+                    <td class="fw-bold">{{ s.angajat.prenume }} {{ s.angajat.nume }}</td>
                     <td>{{ s.angajat.departament }}</td>
                     <td class="text-center">{{ s.total }}</td>
                     <td class="text-center">{{ s.consumat }}</td>
