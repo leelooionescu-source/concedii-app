@@ -6,8 +6,17 @@ import requests
 from datetime import date, datetime
 
 SUPABASE_URL = "https://lbpuuvujpxtwwmdnlhvh.supabase.co"
-SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
 BUCKET = "concedii"
+
+# Read key from env variable or .env file
+SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
+if not SERVICE_KEY:
+    _env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+    if os.path.exists(_env_path):
+        with open(_env_path) as _f:
+            for _line in _f:
+                if _line.startswith('SUPABASE_SERVICE_KEY='):
+                    SERVICE_KEY = _line.split('=', 1)[1].strip()
 
 HEADERS = {
     "Authorization": f"Bearer {SERVICE_KEY}",
