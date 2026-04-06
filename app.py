@@ -350,4 +350,4 @@ def api_notifications():
 # ============ RUN ============
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5060, debug=False)
+    app.run(host='0.0.0.0', port=5080, debug=False)
