@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<h3 class="mb-4">Dashboard - {{ an }}</h3>
+
+<!-- Cine e in concediu azi -->
+<div class="card shadow-sm mb-4">
+    <div class="card-header card-header-primary">
+        <h5 class="mb-0">In concediu azi ({{ azi.strftime('%d.%m.%Y') }})</h5>
+    </div>
+    <div class="card-body">
+        {% if in_concediu %}
+        <div class="d-flex flex-wrap gap-2">
+            {% for c in in_concediu %}
+            <span class="badge bg-{{ 'primary' if c.tip == 'CO' else 'warning text-dark' if c.tip == 'MEDICAL' else 'secondary' }} fs-6 p-2">
+                {{ c.angajat.nume_complet }} - {{ tipuri.get(c.tip, c.tip) }}
+                <small>(pana {{ c.data_sfarsit.strftime('%d.%m') }})</small>
+            </span>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">Nimeni nu e in concediu azi.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Sold zile CO -->
+<div class="card shadow-sm">
+    <div class="card-header bg-light">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Sold zile concediu odihna - {{ an }}</h5>
+            <a href="/rapoarte/export?an={{ an }}" class="btn btn-sm btn-outline-primary">Export Excel</a>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Angajat</th>
+                    <th>Departament</th>
+                    <th class="text-center">Total zile/an</th>
+                    <th class="text-center">Consumat</th>
+                    <th class="text-center">Ramas</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in solduri %}
+                <tr>
+                    <td class="fw-bold">{{ s.angajat.nume_complet }}</td>
+                    <td>{{ s.angajat.departament }}</td>
+                    <td class="text-center">{{ s.total }}</td>
+                    <td class="text-center">{{ s.consumat }}</td>
+                    <td class="text-center">
+                        <span class="badge bg-{{ 'success' if s.ramas > 5 else 'warning text-dark' if s.ramas > 0 else 'danger' }} fs-6">
+                            {{ s.ramas }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="/concedii?angajat_id={{ s.angajat.id }}" class="btn btn-sm btn-outline-secondary">Detalii</a>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not solduri %}
+                <tr><td colspan="6" class="text-center text-muted py-4">Niciun angajat inregistrat. <a href="/angajati">Adauga angajati</a></td></tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

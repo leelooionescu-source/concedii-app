@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>Angajati</h3>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">Adauga angajat</button>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Nume</th>
+                    <th>Prenume</th>
+                    <th>Departament</th>
+                    <th>Data angajare</th>
+                    <th class="text-center">Zile CO/an</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in angajati %}
+                <tr class="{{ 'table-secondary' if not a.activ }}">
+                    <td>{{ loop.index }}</td>
+                    <td class="fw-bold">{{ a.nume }}</td>
+                    <td>{{ a.prenume }}</td>
+                    <td>{{ a.departament }}</td>
+                    <td>{{ a.data_angajare.strftime('%d.%m.%Y') if a.data_angajare else '-' }}</td>
+                    <td class="text-center">{{ a.zile_co_an }}</td>
+                    <td><span class="badge bg-{{ 'success' if a.activ else 'secondary' }}">{{ 'Activ' if a.activ else 'Inactiv' }}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModal{{ a.id }}">Editeaza</button>
+                        <form action="/angajati/sterge/{{ a.id }}" method="post" class="d-inline" onsubmit="return confirm('Sigur doriti stergerea?')">
+                            <button class="btn btn-sm btn-outline-danger">Sterge</button>
+                        </form>
+                    </td>
+                </tr>
+                <!-- Edit Modal -->
+                <div class="modal fade" id="editModal{{ a.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form action="/angajati/editeaza/{{ a.id }}" method="post">
+                                <div class="modal-header"><h5 class="modal-title">Editeaza {{ a.nume_complet }}</h5></div>
+                                <div class="modal-body">
+                                    <div class="mb-2"><label class="form-label">Nume</label><input name="nume" class="form-control" value="{{ a.nume }}" required></div>
+                                    <div class="mb-2"><label class="form-label">Prenume</label><input name="prenume" class="form-control" value="{{ a.prenume }}" required></div>
+                                    <div class="mb-2"><label class="form-label">Departament</label><input name="departament" class="form-control" value="{{ a.departament }}"></div>
+                                    <div class="mb-2"><label class="form-label">Zile CO/an</label><input name="zile_co_an" type="number" class="form-control" value="{{ a.zile_co_an }}"></div>
+                                    <div class="mb-2"><label class="form-label">Data angajare</label><input name="data_angajare" type="date" class="form-control" value="{{ a.data_angajare.strftime('%Y-%m-%d') if a.data_angajare else '' }}"></div>
+                                    <div class="form-check"><input name="activ" type="checkbox" class="form-check-input" {{ 'checked' if a.activ }}><label class="form-check-label">Activ</label></div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuleaza</button>
+                                    <button type="submit" class="btn btn-primary">Salveaza</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Modal -->
+<div class="modal fade" id="addModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form action="/angajati/adauga" method="post">
+                <div class="modal-header card-header-primary"><h5 class="modal-title text-white">Angajat nou</h5></div>
+                <div class="modal-body">
+                    <div class="mb-2"><label class="form-label">Nume *</label><input name="nume" class="form-control" required></div>
+                    <div class="mb-2"><label class="form-label">Prenume *</label><input name="prenume" class="form-control" required></div>
+                    <div class="mb-2"><label class="form-label">Departament</label><input name="departament" class="form-control"></div>
+                    <div class="mb-2"><label class="form-label">Zile CO/an</label><input name="zile_co_an" type="number" class="form-control" value="21"></div>
+                    <div class="mb-2"><label class="form-label">Data angajare</label><input name="data_angajare" type="date" class="form-control"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuleaza</button>
+                    <button type="submit" class="btn btn-primary">Adauga</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

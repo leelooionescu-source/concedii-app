@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>Calendar - {{ luna_nume }} {{ an }}</h3>
+    <div class="d-flex gap-2">
+        {% set prev_luna = luna - 1 if luna > 1 else 12 %}
+        {% set prev_an = an if luna > 1 else an - 1 %}
+        {% set next_luna = luna + 1 if luna < 12 else 1 %}
+        {% set next_an = an if luna < 12 else an + 1 %}
+        <a href="/calendar?an={{ prev_an }}&luna={{ prev_luna }}" class="btn btn-outline-secondary btn-sm">&laquo; Luna anterioara</a>
+        <a href="/calendar?an={{ next_an }}&luna={{ next_luna }}" class="btn btn-outline-secondary btn-sm">Luna urmatoare &raquo;</a>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-bordered mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 50px;">Zi</th>
+                    <th style="width: 80px;">Data</th>
+                    <th style="width: 100px;">Ziua</th>
+                    <th>Concedii / Sarbatori</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set zile_sapt = ['Luni', 'Marti', 'Miercuri', 'Joi', 'Vineri', 'Sambata', 'Duminica'] %}
+                {% for z in zile %}
+                <tr class="{{ 'table-secondary' if z.weekend else 'table-danger bg-opacity-10' if z.sarbatoare else '' }}">
+                    <td class="text-center fw-bold">{{ z.data.day }}</td>
+                    <td class="text-center">{{ z.data.strftime('%d.%m') }}</td>
+                    <td>{{ zile_sapt[z.data.weekday()] }}</td>
+                    <td>
+                        {% if z.sarbatoare %}
+                        <span class="badge bg-danger">{{ z.sarbatoare }}</span>
+                        {% endif %}
+                        {% for c in z.concedii %}
+                        <span class="badge bg-{{ 'primary' if c.tip == 'CO' else 'warning text-dark' if c.tip == 'MEDICAL' else 'info' if c.tip == 'EVENIMENT' else 'secondary' }}">
+                            {{ c.angajat.nume_complet }} - {{ tipuri.get(c.tip, c.tip) }}
+                        </span>
+                        {% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

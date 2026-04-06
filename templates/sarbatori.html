@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3>Sarbatori Legale - {{ an }}</h3>
+    <div class="d-flex gap-2">
+        <a href="/sarbatori?an={{ an - 1 }}" class="btn btn-outline-secondary btn-sm">{{ an - 1 }}</a>
+        <a href="/sarbatori?an={{ an + 1 }}" class="btn btn-outline-secondary btn-sm">{{ an + 1 }}</a>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>#</th>
+                    <th>Data</th>
+                    <th>Ziua</th>
+                    <th>Sarbatoare</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set zile_sapt = ['Luni', 'Marti', 'Miercuri', 'Joi', 'Vineri', 'Sambata', 'Duminica'] %}
+                {% for s in sarbatori %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td class="fw-bold">{{ s.data.strftime('%d.%m.%Y') }}</td>
+                    <td>{{ zile_sapt[s.data.weekday()] }}</td>
+                    <td>{{ s.denumire }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
